@@ -1,12 +1,40 @@
 #!/bin/bash
 # Универсальный установщик Open-with-chooser для Linux
+
+# ОБРАБОТКА АРГУМЕНТОВ В САМОМ НАЧАЛЕ
+AUTO_YES=false
+for arg in "$@"; do
+    case $arg in
+        --yes|-y)
+            AUTO_YES=true
+            ;;
+        --help|-h)
+            echo "Open-with-chooser Installer v2.0.0"
+            echo "Использование: $0 [--yes|-y] [--help|-h]"
+            echo ""
+            echo "Опции:"
+            echo "  --yes, -y    Неинтерактивная установка (автоматически 'да' на все вопросы)"
+            echo "  --help, -h   Показать эту справку"
+            echo ""
+            echo "Описание:"
+            echo "  Устанавливает Open-with-chooser - универсальный селектор приложений"
+            echo "  для открытия файлов и URL в Linux."
+            exit 0
+            ;;
+    esac
+done
+
+# Теперь включаем строгий режим
 set -e
 
 echo "=== Установщик Open-with-chooser ==="
 echo "Универсальный селектор приложений для URL и файлов"
+if [ "$AUTO_YES" = true ]; then
+    echo "🚀 Режим: автоматическая установка (--yes)"
+fi
 echo
 
-# Проверка прав администратора для системной установки
+# Проверка прав
 if [ "$EUID" -eq 0 ]; then
     INSTALL_TYPE="system"
     INSTALL_DIR="/usr/local/bin"
@@ -19,80 +47,62 @@ else
     echo "👤 Установка в пользовательские директории"
 fi
 
-# Создание необходимых директорий
+# Создание директорий
 echo "📁 Создание директорий..."
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$DESKTOP_DIR"
 mkdir -p "$HOME/.config/open-with-chooser"
 
-# Определение пакетного менеджера и установка зависимостей
-echo "📦 Установка зависимостей..."
-
-install_dependencies() {
-    local deps="python3-gi python3-gi-cairo gir1.2-gtk-3.0 wmctrl zenity python3-xdg"
-    
-    if command -v apt-get >/dev/null 2>&1; then
-        echo "🔄 Используется APT (Debian/Ubuntu)"
-        if [ "$INSTALL_TYPE" = "system" ]; then
-            apt-get update
-            apt-get install -y $deps
-        else
-            echo "⚠️  Для установки зависимостей требуются права администратора:"
-            echo "sudo apt-get update && sudo apt-get install -y $deps"
-            echo "Продолжить без установки зависимостей? (y/N)"
-            read -r response
-            if [ "$response" != "y" ] && [ "$response" != "Y" ]; then
-                exit 1
-            fi
-        fi
-    elif command -v dnf >/dev/null 2>&1; then
-        echo "🔄 Используется DNF (Fedora/RHEL)"
-        local fedora_deps="python3-gobject gtk3-devel wmctrl zenity python3-pyxdg"
-        if [ "$INSTALL_TYPE" = "system" ]; then
-            dnf install -y $fedora_deps
-        else
-            echo "⚠️  Для установки зависимостей требуются права администратора:"
-            echo "sudo dnf install -y $fedora_deps"
-        fi
-    elif command -v pacman >/dev/null 2>&1; then
-        echo "🔄 Используется Pacman (Arch Linux)"
-        local arch_deps="python-gobject gtk3 wmctrl zenity python-pyxdg"
-        if [ "$INSTALL_TYPE" = "system" ]; then
-            pacman -S --noconfirm $arch_deps
-        else
-            echo "⚠️  Для установки зависимостей требуются права администратора:"
-            echo "sudo pacman -S --noconfirm $arch_deps"
-        fi
-    elif command -v zypper >/dev/null 2>&1; then
-        echo "🔄 Используется Zypper (openSUSE)"
-        local suse_deps="python3-gobject-Gdk typelib-1_0-Gtk-3_0 wmctrl zenity python3-pyxdg"
-        if [ "$INSTALL_TYPE" = "system" ]; then
-            zypper install -y $suse_deps
-        else
-            echo "⚠️  Для установки зависимостей требуются права администратора:"
-            echo "sudo zypper install -y $suse_deps"
-        fi
-    else
-        echo "❌ Неизвестный пакетный менеджер. Установите зависимости вручную:"
-        echo "   python3-gi, gir1.2-gtk-3.0, python3-xdg, wmctrl, zenity"
-    fi
-}
-
-# Установка зависимостей
-install_dependencies
-
-# Копирование основного скрипта
-echo "📋 Установка основного скрипта..."
-if [ -f "open-with-chooser.py" ]; then
-    cp "open-with-chooser.py" "$INSTALL_DIR/open-with-chooser"
-    chmod +x "$INSTALL_DIR/open-with-chooser"
-    echo "✅ Скрипт установлен в $INSTALL_DIR/open-with-chooser"
+# Упрощенная установка зависимостей
+echo "📦 Проверка зависимостей..."
+if [ "$AUTO_YES" = true ]; then
+    echo "🚀 Автоматический режим: пропускаем интерактивную установку зависимостей"
 else
-    echo "❌ Файл open-with-chooser.py не найден в текущей директории"
+    echo "⚠️  Убедитесь что установлены: python3-gi python3-gi-cairo gir1.2-gtk-3.0 wmctrl zenity python3-xdg"
+    echo "Продолжить установку? (y/N)"
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        echo "❌ Установка прервана"
+        exit 1
+    fi
+fi
+
+# УМНЫЙ ПОИСК ФАЙЛА
+echo "📋 Поиск основного скрипта..."
+SCRIPT_FILE=""
+
+# Ищем в разных местах
+for path in \
+    "open-with-chooser.py" \
+    "../src/open-with-chooser.py" \
+    "src/open-with-chooser.py" \
+    "./src/open-with-chooser.py" \
+    "../open-with-chooser.py" \
+    "*/open-with-chooser.py"; do
+    
+    if [ -f "$path" ]; then
+        SCRIPT_FILE="$path"
+        echo "✅ Найден: $path"
+        break
+    fi
+done
+
+if [ -z "$SCRIPT_FILE" ]; then
+    echo "❌ Файл open-with-chooser.py не найден!"
+    echo "📂 Ищем в текущей директории:"
+    find . -name "*.py" -type f 2>/dev/null | head -5 || echo "Python файлы не найдены"
+    echo ""
+    echo "💡 Запустите установщик из корня проекта или убедитесь что файл существует"
     exit 1
 fi
 
-# Создание .desktop файла
+# Установка скрипта
+echo "📋 Установка скрипта..."
+cp "$SCRIPT_FILE" "$INSTALL_DIR/open-with-chooser"
+chmod +x "$INSTALL_DIR/open-with-chooser"
+echo "✅ Установлен: $INSTALL_DIR/open-with-chooser"
+
+# Desktop файл
 echo "🖥️ Создание .desktop файла..."
 cat > "$DESKTOP_DIR/open-with-chooser.desktop" << 'EOF'
 [Desktop Entry]
@@ -111,120 +121,68 @@ NoDisplay=false
 StartupNotify=true
 EOF
 
-echo "✅ Desktop файл создан: $DESKTOP_DIR/open-with-chooser.desktop"
+echo "✅ Desktop файл: $DESKTOP_DIR/open-with-chooser.desktop"
 
-# Обновление базы данных desktop файлов
-echo "🔄 Обновление базы данных приложений..."
+# Обновление базы
 if command -v update-desktop-database >/dev/null 2>&1; then
+    echo "🔄 Обновление базы приложений..."
     if [ "$INSTALL_TYPE" = "system" ]; then
         update-desktop-database /usr/local/share/applications/ 2>/dev/null || true
-        update-desktop-database /usr/share/applications/ 2>/dev/null || true
     else
         update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
     fi
-    echo "✅ База данных приложений обновлена"
-else
-    echo "⚠️  update-desktop-database не найдена, пропускается"
+    echo "✅ База обновлена"
 fi
 
-# Настройка PATH для пользовательской установки
+# PATH
 if [ "$INSTALL_TYPE" = "user" ]; then
-    echo "🔧 Настройка PATH..."
-    
-    # Проверяем, есть ли уже ~/.local/bin в PATH
-    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
-        # Добавляем в .bashrc
-        if [ -f "$HOME/.bashrc" ]; then
-            echo "" >> "$HOME/.bashrc"
-            echo "# Добавлено установщиком open-with-chooser" >> "$HOME/.bashrc"
-            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
-            echo "✅ PATH добавлен в ~/.bashrc"
-        fi
-        
-        # Добавляем в .profile для совместимости
-        if [ -f "$HOME/.profile" ]; then
-            echo "" >> "$HOME/.profile"
-            echo "# Добавлено установщиком open-with-chooser" >> "$HOME/.profile"
-            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.profile"
-            echo "✅ PATH добавлен в ~/.profile"
-        fi
-        
-        echo "ℹ️  Перезапустите терминал или выполните: source ~/.bashrc"
-    else
+    echo "🔧 Проверка PATH..."
+    if [[ ":$PATH:" == *":$HOME/.local/bin:"* ]]; then
         echo "✅ ~/.local/bin уже в PATH"
+    else
+        echo "⚠️  Добавляем ~/.local/bin в PATH"
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+        echo "✅ Добавлено в ~/.bashrc"
     fi
 fi
 
-# Опциональная настройка как обработчика по умолчанию
-echo
-echo "🌐 Настройка обработчиков по умолчанию..."
-echo "Установить open-with-chooser как обработчик по умолчанию для веб-ссылок? (y/N)"
-read -r response
-
-if [ "$response" = "y" ] || [ "$response" = "Y" ]; then
+# Обработчики
+echo ""
+echo "🌐 Настройка обработчиков..."
+if [ "$AUTO_YES" = true ]; then
+    echo "🚀 Автоматический режим: настраиваем веб-обработчики"
     if command -v xdg-mime >/dev/null 2>&1; then
         xdg-mime default open-with-chooser.desktop x-scheme-handler/http 2>/dev/null || true
         xdg-mime default open-with-chooser.desktop x-scheme-handler/https 2>/dev/null || true
-        xdg-mime default open-with-chooser.desktop text/html 2>/dev/null || true
-        echo "✅ Установлен как обработчик по умолчанию для HTTP/HTTPS"
-    else
-        echo "⚠️  xdg-mime не найдена, настройка пропущена"
+        echo "✅ Веб-обработчики настроены"
     fi
 else
-    echo "ℹ️  Обработчики по умолчанию не настроены"
+    echo "Настроить как обработчик веб-ссылок? (y/N)"
+    read -r response
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        if command -v xdg-mime >/dev/null 2>&1; then
+            xdg-mime default open-with-chooser.desktop x-scheme-handler/http
+            xdg-mime default open-with-chooser.desktop x-scheme-handler/https
+            echo "✅ Веб-обработчики настроены"
+        fi
+    fi
 fi
 
-# Проверка установки
-echo
-echo "🧪 Проверка установки..."
-
-if [ -x "$INSTALL_DIR/open-with-chooser" ]; then
-    echo "✅ Исполняемый файл установлен и доступен"
-else
-    echo "❌ Ошибка: исполняемый файл недоступен"
-    exit 1
-fi
-
-if [ -f "$DESKTOP_DIR/open-with-chooser.desktop" ]; then
-    echo "✅ Desktop файл установлен"
-else
-    echo "❌ Ошибка: desktop файл не найден"
-    exit 1
-fi
-
-# Проверка зависимостей Python
-echo "🐍 Проверка зависимостей Python..."
-python3 -c "
-try:
-    import gi
-    gi.require_version('Gtk', '3.0')
-    from gi.repository import Gtk
-    print('✅ GTK3 bindings доступны')
-except ImportError as e:
-    print(f'❌ Ошибка импорта GTK: {e}')
-    exit(1)
-
-try:
-    from xdg.DesktopEntry import DesktopEntry
-    print('✅ PyXDG доступен')
-except ImportError:
-    print('⚠️  PyXDG недоступен (опциональная зависимость)')
-" 2>/dev/null || echo "⚠️  Некоторые зависимости Python могут отсутствовать"
-
-echo
-echo "🎉 Установка завершена успешно!"
-echo
-echo "📖 Использование:"
-echo "  • Командная строка: open-with-chooser <url|file>"
-echo "  • Правый клик на файле: 'Открыть с помощью' -> 'Open With Chooser'"
-echo "  • Автоматически для веб-ссылок (если настроено)"
-echo
-echo "📂 Конфигурация сохраняется в: ~/.config/open-with-chooser/"
-echo "📝 Логи: ~/.config/open-with-chooser/chooser.log"
-echo
+echo ""
+echo "🎉 УСТАНОВКА ЗАВЕРШЕНА!"
+echo ""
+echo "📋 Использование:"
+echo "   open-with-chooser <файл_или_URL>"
+echo "   open-with-chooser https://github.com"
+echo "   open-with-chooser /path/to/file.txt"
+echo ""
+echo "🖥️  Также доступно через контекстное меню файлов"
 
 if [ "$INSTALL_TYPE" = "user" ] && [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
-    echo "⚠️  ВАЖНО: Перезапустите терминал для применения изменений PATH"
+    echo ""
+    echo "⚠️  ВАЖНО: Перезапустите терминал или выполните:"
+    echo "   source ~/.bashrc"
 fi
 
-echo "✨ Готово к использованию!"
+echo ""
+echo "✨ Open-with-chooser v2.0.0 готов к использованию!"
