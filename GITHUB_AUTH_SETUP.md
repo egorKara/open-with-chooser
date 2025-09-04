@@ -65,8 +65,8 @@ git push -u origin main
 1. **Перейдите**: https://github.com/egorKara/open-with-chooser/releases
 2. **Нажмите**: "Create a new release"
 3. **Заполните**:
-   - Tag: `v2.0.0`
-   - Title: `🎉 Open With Chooser Enhanced v2.0.0`
+   - Tag: `v2.0.1`
+   - Title: `🎉 Open With Chooser Enhanced v2.0.1`
    - Description: Скопируйте из README.md
 4. **Прикрепите**: `scripts/open-with-chooser-installer.sh`
 5. **Publish release**

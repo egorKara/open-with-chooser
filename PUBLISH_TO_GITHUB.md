@@ -27,7 +27,7 @@ git branch -M main
 git push -u origin main
 ```
 
-### 3. Создайте релиз v2.0.0
+### 3. Создайте релиз v2.0.1
 - Прикрепите `scripts/open-with-chooser-installer.sh`
 - Добавьте описание возможностей из README.md
 

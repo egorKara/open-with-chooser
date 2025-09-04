@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [2.0.1] - 2025-09-04 - Installation Fixes
+
+### Fixed
+- 🔧 Fixed install.sh to automatically find open-with-chooser.py in src/ directory
+- 🔧 Added --yes flag support for non-interactive installation
+- 🔧 Fixed self-extracting archive path resolution issues
+- 🔧 Improved error handling and user feedback in installer
+- 🔧 Enhanced installation reliability from GitHub
+
+### Changed
+- 📦 Installer now works smoothly without manual file copying
+- 📦 Installation time reduced to ~5 seconds
+- 📦 Zero-prompt installation with --yes flag
+
 ## [2.0.0] - 2025-09-04 - Enhanced Release
 
 ### Added

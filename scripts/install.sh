@@ -9,7 +9,7 @@ for arg in "$@"; do
             AUTO_YES=true
             ;;
         --help|-h)
-            echo "Open-with-chooser Installer v2.0.0"
+            echo "Open-with-chooser Installer v2.0.1"
             echo "Использование: $0 [--yes|-y] [--help|-h]"
             echo ""
             echo "Опции:"
@@ -185,4 +185,4 @@ if [ "$INSTALL_TYPE" = "user" ] && [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; th
 fi
 
 echo ""
-echo "✨ Open-with-chooser v2.0.0 готов к использованию!"
+echo "✨ Open-with-chooser v2.0.1 готов к использованию!"
